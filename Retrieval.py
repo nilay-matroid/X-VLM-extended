@@ -224,6 +224,7 @@ def main(args, config):
     np.random.seed(seed)
     random.seed(seed)
     cudnn.benchmark = True
+    torch.cuda.empty_cache()
 
     print("Creating model", flush=True)
     model = XVLM(config=config)
@@ -377,5 +378,7 @@ if __name__ == '__main__':
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))    
+
+    torch.cuda.empty_cache() 
 
     main(args, config)
