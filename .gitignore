@@ -1,1 +1,10 @@
+*.th
+*.tar
+*.bin
 __pycache__/
+.ipynb_checkpoints/
+checkpoints
+data
+images
+output
+refTools/__pycache__/
