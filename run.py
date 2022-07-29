@@ -149,7 +149,8 @@ def run_retrieval(args):
 
     os.system(f"{dist_launch} "
               f"--use_env Retrieval.py --config {args.config} "
-              f"--output_dir {args.output_dir} --bs {args.bs} --checkpoint {args.checkpoint} {'--evaluate' if args.evaluate else ''}")
+              f"--output_dir {args.output_dir} --bs {args.bs} --checkpoint {args.checkpoint} {'--evaluate' if args.evaluate else ''} "
+              f"{'--load_pretrained' if args.load_pretrained else ''}")
 
 
 def run_vqa(args):
@@ -372,6 +373,7 @@ if __name__ == '__main__':
                                                                     "to collect eval results among nodes")
 
     parser.add_argument('--evaluate', action='store_true', help="evaluation on downstream tasks")
+    parser.add_argument('--load_pretrained', action='store_true', help="Load a pretrained model for zeroshot evaluation or finetuning")
 
     parser.add_argument('--config_override', default='', type=str, help="Override the default config if this argument is not empty string.")
 

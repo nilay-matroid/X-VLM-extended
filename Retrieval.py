@@ -239,7 +239,7 @@ def main(args, config):
 
     print("Creating model", flush=True)
     model = XVLM(config=config)
-    model.load_pretrained(args.checkpoint, config, is_eval=args.evaluate)
+    model.load_pretrained(args.checkpoint, config, is_eval=(args.evaluate and not args.load_pretrained))
     model = model.to(device)
     print("### Total Params: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
@@ -381,6 +381,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--bs', default=-1, type=int, help="for each gpu, batch_size = bs // num_gpus")
     parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument('--load_pretrained', action='store_true')
 
     args = parser.parse_args()
 
