@@ -10,6 +10,7 @@ from dataset.nlvr_dataset import nlvr_dataset
 from dataset.vqa_dataset import vqa_dataset
 from dataset.grounding_dataset import grounding_dataset, grounding_dataset_bbox
 from dataset.coco_karpathy_dataset import coco_karpathy_train, coco_karpathy_train_scst, coco_karpathy_caption_eval
+from dataset.RSTPReid import RSTPReid, RSTPReidTrain
 
 
 from dataset.randaugment import RandomAugment
@@ -78,6 +79,17 @@ def create_dataset(dataset, config, evaluate=False):
 
         train_dataset = re_train_dataset(config['train_file'], train_transform, config['image_root'])
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root'])
+        return train_dataset, val_dataset, test_dataset
+
+
+    elif dataset == 'personreid_re':
+        test_dataset = RSTPReid(config['image_root'], split='test', transform=test_transform)
+        val_dataset = RSTPReid(config['image_root'], split='val', transform=test_transform)
+        if evaluate:
+            return None, val_dataset, test_dataset
+        
+        train_dataset = RSTPReidTrain(config['image_root'], image_transform=train_transform, split='train')
+        
         return train_dataset, val_dataset, test_dataset
 
     elif dataset == 'vqa':

@@ -153,6 +153,14 @@ def run_retrieval(args):
               f"{'--load_pretrained' if args.load_pretrained else ''}")
 
 
+def run_personreid_retrieval(args):
+    dist_launch = get_dist_launch(args)
+
+    os.system(f"{dist_launch} "
+              f"--use_env Retrieval_personreid.py --config {args.config} "
+              f"--output_dir {args.output_dir} --bs {args.bs} --checkpoint {args.checkpoint} {'--evaluate' if args.evaluate else ''} "
+              f"{'--load_pretrained' if args.load_pretrained else ''}")
+
 def run_vqa(args):
     dist_launch = get_dist_launch(args)
 
@@ -248,6 +256,13 @@ def run(args):
         if args.config_override != '':
             args.config = args.config_override
         run_retrieval(args)
+
+    elif args.task == 'itr_rstpreid':
+        assert os.path.exists("images/RSTPReid")
+        args.config = 'configs/itr_rstpreid/config_zeroshot.yaml'
+        if args.config_override != '':
+            args.config = args.config_override
+        run_personreid_retrieval(args)
 
     elif args.task == 'vqa':
         assert os.path.exists("images/coco") and os.path.exists("images/visualgenome")
