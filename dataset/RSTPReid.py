@@ -9,7 +9,7 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 
-from dataset.utils import pre_caption
+from dataset.utils import pre_caption_custom
 
 
 from torch.utils.data import Dataset
@@ -75,7 +75,7 @@ class RSTPReidTrain(Dataset):
         assert self.split in valid_splits, f"Invalid split name: {self.split}"
         
 
-    def __init__(self, root_dir, image_transform, split='train', shuffle=False, print_stats=True):
+    def __init__(self, root_dir, image_transform, split='train', shuffle=False, print_stats=True, do_pre_caption=False, max_words=70):
         """
         Args:
             root_dir (string): Directory with all the images and captions.
@@ -87,6 +87,8 @@ class RSTPReidTrain(Dataset):
         self.captions_file = os.path.join(root_dir, 'filtered_data_captions.json')
         self.shuffle = shuffle
         self.image_transform = image_transform
+        self.do_pre_caption = do_pre_caption
+        self.max_words = max_words
         self._validate_args()
 
         dataframe = pd.read_json(self.captions_file)
@@ -148,11 +150,15 @@ class RSTPReidTrain(Dataset):
         # Load Image Tensor
         image_file = os.path.join(self.image_file_path, self.imgs[image_id])
         try:
-            image_tensor = self.image_transform(PIL.Image.open(image_file))
+            image_tensor = self.image_transform(PIL.Image.open(image_file).convert('RGB'))
         except (PIL.UnidentifiedImageError, OSError) as corrupt_image_exceptions:
             print(f"An exception occurred trying to load file {image_file}.")
             print(f"Skipping index {idx}")
             return self.skip_sample(idx)
+
+
+        if self.do_pre_caption:
+            caption = pre_caption_custom(caption, max_words=self.max_words)
 
         return image_tensor, caption, image_id
 
@@ -183,7 +189,7 @@ class RSTPReidTrain(Dataset):
 
 
 class RSTPReid(Dataset):
-    def __init__(self, root_dir, split='train', transform=None, print_stats=True):
+    def __init__(self, root_dir, split='train', transform=None, print_stats=True, do_pre_caption=False, max_words=70):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -211,6 +217,8 @@ class RSTPReid(Dataset):
         self.imgs = dataframe['img_path'].tolist()
         self.identities = dataframe['id'].tolist()
         self.captions = dataframe['captions'].tolist()
+        self.do_pre_caption = do_pre_caption
+        self.max_words = max_words
         self.text = []
 
         self.txt2img = {}
@@ -223,6 +231,8 @@ class RSTPReid(Dataset):
             for caption in self.captions[img_id]:
                 self.txt2img[txt_id] = img_id
                 self.img2txt[img_id].append(txt_id)
+                if self.do_pre_caption:
+                    caption = pre_caption_custom(caption, max_words=self.max_words)
                 self.text.append(caption)
                 self.txt2id[txt_id] = self.identities[img_id]
                 txt_id += 1
@@ -236,7 +246,7 @@ class RSTPReid(Dataset):
             idx = idx.tolist()
 
         img_name = os.path.join(self.image_file_path, self.imgs[idx])
-        image = Image.open(img_name)
+        image = Image.open(img_name).convert('RGB')
 
         if self.transform:
             image = self.transform(image)
@@ -246,7 +256,8 @@ class RSTPReid(Dataset):
     def get_captions(self, img_ids):
         caption_list = []
         for img_id in img_ids:
-            caption_list.append(self.captions[img_id])
+            for txt_id in self.img2txt[img_id]:
+                caption_list.append(self.text[txt_id])
         return caption_list    
 
     def _print_dataset_stats(self, df):
