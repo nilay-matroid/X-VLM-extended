@@ -161,6 +161,10 @@ def evaluation(model, data_loader, tokenizer, device, config):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Evaluation time {}'.format(total_time_str)) 
 
+    del image_embeds, image_embed, image_feat, image_feats
+    del text_embeds, text_embed, text_feat, text_feats, text_atts
+    del encoder_output, encoder_att
+
     return score_matrix_i2t.cpu().numpy(), score_matrix_t2i.cpu().numpy()
 
 
@@ -238,6 +242,8 @@ def main(args, config):
     device = torch.device(args.device)
 
     world_size = utils.get_world_size()
+
+    print(f"World Size: {world_size}")
 
     if args.bs > 0:
         config['batch_size_train'] = args.bs // world_size
@@ -344,25 +350,25 @@ def main(args, config):
                 with open(os.path.join(args.output_dir, "log.txt"), "a") as f:
                     f.write(json.dumps(log_stats) + "\n")
 
-                if test_result['r_mean'] > best:
+                if test_result['img_r_mean'] > best:
                     save_obj = {
                         'model': model_without_ddp.state_dict(),
-                        # 'optimizer': optimizer.state_dict(),
-                        # 'lr_scheduler': lr_scheduler.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'lr_scheduler': lr_scheduler.state_dict(),
                         'config': config,
-                        # 'epoch': epoch,
+                        'epoch': epoch,
                     }
                     torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))
-                    best = test_result['r_mean']
+                    best = test_result['img_r_mean']
                     best_epoch = epoch
 
                 elif epoch >= config['schedular']['epochs'] - 1:
                     save_obj = {
                         'model': model_without_ddp.state_dict(),
-                        # 'optimizer': optimizer.state_dict(),
-                        # 'lr_scheduler': lr_scheduler.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'lr_scheduler': lr_scheduler.state_dict(),
                         'config': config,
-                        # 'epoch': epoch,
+                        'epoch': epoch,
                     }
                     torch.save(save_obj, os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
 
@@ -387,7 +393,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, required=True)  # this script works for both mscoco and flickr30k
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
+    parser.add_argument('--world_size', default=2, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     parser.add_argument('--distributed', action='store_false')
 

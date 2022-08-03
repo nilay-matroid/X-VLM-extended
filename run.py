@@ -13,7 +13,7 @@ from utils.hdfs_io import HADOOP_BIN, hexists, hmkdir, hcopy
 
 ############ Set it correctly for distributed training across nodes
 NNODES = 1  # e.g. 1/2/3/4
-NPROC_PER_NODE = 1  # e.g. 8 gpus
+NPROC_PER_NODE = 4  # e.g. 8 gpus
 
 MASTER_ADDR = 'SET_IT'
 MASTER_PORT = 12345
@@ -41,11 +41,19 @@ def get_dist_launch(args):  # some examples
             NPROC_PER_NODE, NNODES, NODE_RANK, MASTER_ADDR, MASTER_PORT)
 
     elif args.dist == '1':
+        if args.master_port_override is not None:
+            return f"python3 -m torch.distributed.launch --nproc_per_node={NPROC_PER_NODE} --master_port={args.master_port_override} " \
+               "--nnodes=1 "
+
         return "python3 -m torch.distributed.launch --nproc_per_node={:} " \
                "--nnodes=1 ".format(NPROC_PER_NODE)
 
     elif args.dist == 'f4':
-        return "CUDA_VISIBLE_DEVICES=0,1,2,3 WORLD_SIZE=4 python3 -m torch.distributed.launch --nproc_per_node=4 " \
+        master_port = "12345"
+        if args.master_port_override is not None:
+            master_port = args.master_port_override
+
+        return f"CUDA_VISIBLE_DEVICES=0,1,2,3 WORLD_SIZE=4 python3 -m torch.distributed.launch --master_port={master_port} --nproc_per_node=4 " \
                "--nnodes=1 "
 
     elif args.dist == 'l4':
@@ -372,6 +380,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, required=True)
     parser.add_argument('--dist', type=str, required=True, help="see func get_dist_launch for details")
+    parser.add_argument('--master_port_override', type=str, default=None, help="Override master port with this value if not None")
 
     parser.add_argument('--config', default='', type=str, help="if not given, use default")
     parser.add_argument('--bs', default=-1, type=int, help="for each gpu, batch_size = bs // num_gpus; "
