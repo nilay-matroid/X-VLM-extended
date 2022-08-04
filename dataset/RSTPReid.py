@@ -75,7 +75,7 @@ class RSTPReidTrain(Dataset):
         assert self.split in valid_splits, f"Invalid split name: {self.split}"
         
 
-    def __init__(self, root_dir, image_transform, split='train', shuffle=False, print_stats=True, do_pre_caption=False, max_words=70):
+    def __init__(self, root_dir, image_transform, split='train', shuffle=False, print_stats=True, do_pre_caption=True, max_words=30):
         """
         Args:
             root_dir (string): Directory with all the images and captions.

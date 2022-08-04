@@ -5,10 +5,10 @@ embed_dim: 256
 image_res: 224
 image_root: images/RSTPReid
 k_test: 128
-max_tokens: 70
+max_tokens: 40
 optimizer: {lr: 3e-05, lr_mult: 2, opt: adamW, weight_decay: 0.01}
 patch_size: 32
-schedular: {epochs: 10, lr: 3e-05, num_warmup_steps: 0.1, sched: linear}
+schedular: {epochs: 30, lr: 3e-05, num_warmup_steps: 0.1, sched: linear}
 temp: 0.07
 text_config: configs/config_bert.json
 text_encoder: data/bert-base-uncased

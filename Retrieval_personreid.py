@@ -333,10 +333,11 @@ def main(args, config):
                 train_loader.sampler.set_epoch(epoch)
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, device, lr_scheduler, config)
 
-            score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
-            score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
+            if epoch % args.val_freq == 0 or epoch == max_epoch - 1:
+                score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
+                score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
 
-            if utils.is_main_process():
+            if utils.is_main_process() and (epoch % args.val_freq == 0 or epoch == max_epoch - 1):
                 val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2id, val_loader.dataset.identities, config['only_text2image'])
                 print(val_result)
                 test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2id, test_loader.dataset.identities, config['only_text2image'])
@@ -400,6 +401,7 @@ if __name__ == '__main__':
     parser.add_argument('--bs', default=-1, type=int, help="for each gpu, batch_size = bs // num_gpus")
     parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--load_pretrained', action='store_true')
+    parser.add_argument('--val_freq', type=int, default=10, help="Frequency to eval during training")
 
     args = parser.parse_args()
 

@@ -167,7 +167,8 @@ def run_personreid_retrieval(args):
     os.system(f"{dist_launch} "
               f"--use_env Retrieval_personreid.py --config {args.config} "
               f"--output_dir {args.output_dir} --bs {args.bs} --checkpoint {args.checkpoint} {'--evaluate' if args.evaluate else ''} "
-              f"{'--load_pretrained' if args.load_pretrained else ''}")
+              f"{'--load_pretrained' if args.load_pretrained else ''} "
+              f"--val_freq {args.val_freq}")
 
 def run_vqa(args):
     dist_launch = get_dist_launch(args)
@@ -400,6 +401,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_pretrained', action='store_true', help="Load a pretrained model for zeroshot evaluation or finetuning")
 
     parser.add_argument('--config_override', default='', type=str, help="Override the default config if this argument is not empty string.")
+    parser.add_argument('--val_freq', type=int, default=10, help="Frequency to eval during training")
 
     args = parser.parse_args()
 
