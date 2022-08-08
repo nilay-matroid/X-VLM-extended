@@ -1,0 +1,23 @@
+batch_size_test: 12
+batch_size_test_text: 64
+batch_size_train: 20
+embed_dim: 256
+image_res: 224
+image_root: ../images/coco/
+k_test: 256
+max_tokens: 40
+optimizer: {lr: 3e-05, lr_mult: 2, opt: adamW, weight_decay: 0.01}
+patch_size: 32
+schedular: {epochs: 10, lr: 3e-05, num_warmup_steps: 0.1, sched: linear}
+temp: 0.07
+test_file: ../data/finetune/coco_test.json
+text_config: ../configs/config_bert.json
+text_encoder: ../data/bert-base-uncased
+load_bertL_by_sep: False
+train_file: [../data/finetune/coco_train.json]
+use_clip_vit: false
+use_roberta: false
+use_swin: true
+val_file: ../data/finetune/coco_val.json
+vision_config: ../configs/config_swinB_224.json
+only_text2image: true
