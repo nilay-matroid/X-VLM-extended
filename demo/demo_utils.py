@@ -173,21 +173,35 @@ class Visualizer:
             img2txt = self.test_loader.dataset.img2txt
             txt2id = self.test_loader.dataset.txt2id
 
+        vis_label = len(gt_image_ids) > 0
+
         for textid, (text, image_id) in enumerate(zip(texts, image_ids)):
+            image_id = torch.tensor(image_id).tolist()
             print("Query: ", text)
             if len(gt_image_ids) > 0:
                 gt_set = set(gt_image_ids[textid])    
 
-            fig, axes = plt.subplots(1, max_rank, figsize=(3 * max_rank, 6))
+            if vis_label:
+                if self.person_reid:
+                    fig, axes = plt.subplots(2, max_rank, figsize=(3 * max_rank, 36))
+                else:
+                    fig, axes = plt.subplots(2, max_rank, figsize=(3 * max_rank, 12))
+            else:
+                fig, axes = plt.subplots(1, max_rank, figsize=(3 * max_rank, 6))
+
             plt.clf()
 
             for i in range(min(max_rank, len(image_id))):
-                ax = fig.add_subplot(1, max_rank, i + 1)
+                if vis_label:
+                    ax = fig.add_subplot(1, max_rank, i + 1)
+                else:
+                    ax = fig.add_subplot(2, max_rank, i + 1)
+
                 image = self.load_image(image_id[i])            
                 gallery_img = np.asarray(image, dtype=np.uint8)
 
-                is_gt = len(gt_ids) > 0 and self.args.person_id and (gt_ids[textid] == txt2id[img2txt[image_id[i]]])\
-                     or len(gt_image_ids) > 0 and (not self.person_reid) and (image_id[i] in gt_set)
+                is_gt = (len(gt_ids) > 0 and self.person_reid and (gt_ids[textid] == txt2id[img2txt[image_id[i]][0]]))\
+                     or (len(gt_image_ids) > 0 and (not self.person_reid) and (image_id[i] in gt_set))
                
                 if is_gt:
                     ax.add_patch(plt.Rectangle(xy=(0, 0), width=gallery_img.shape[1] - 1,
@@ -201,6 +215,17 @@ class Visualizer:
                 ax.imshow(gallery_img)
                 ax.axis("off")
 
+            if vis_label:
+                for index, gt_image_id in enumerate(gt_image_ids[textid]):
+                    ax = fig.add_subplot(2, max_rank, max_rank + 1 + index)
+                    gt_image = self.load_image(gt_image_id)            
+                    gt_gallery_img = np.asarray(gt_image, dtype=np.uint8)
+                    ax.add_patch(plt.Rectangle(xy=(0, 0), width=gt_gallery_img.shape[1] - 1,
+                                                height=gt_gallery_img.shape[0] - 1, edgecolor=(0, 1, 0),
+                                                fill=False, linewidth=5))
+                    ax.imshow(gt_gallery_img)
+                    ax.axis("off")
+
             plt.tight_layout()
             filepath = os.path.join(root_path, f"{text}_{self.args.dataset}_results.jpg")
             fig.savefig(filepath)
@@ -212,11 +237,17 @@ class Visualizer:
         if type(query) == str or type(query) == int:
             query = [query]
 
-        if type(query) == List[int]:
+        if type(query) == list and type(query[0]) == int:
             if self.person_reid:
                 gt_ids = [self.test_loader.dataset.txt2id[id] for id in query]
+                for gt_id in gt_ids:
+                    gt_image_id = []
+                    for image_id in range(len(self.test_loader.dataset.imgs)):
+                        if self.test_loader.dataset.identities[image_id] == gt_id:
+                            gt_image_id.append(image_id)
+                    gt_image_ids.append(gt_image_id)
             else:
-                gt_image_ids = [self.test_loader.dataset.txt2img[id] for id in query]
+                gt_image_ids = [[self.test_loader.dataset.txt2img[id]] for id in query]
             query = [self.test_loader.dataset.text[id] for id in query]
 
         image_id_list = self.search_texts(query)
