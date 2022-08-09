@@ -6,7 +6,7 @@ from typing import List
 
 import ruamel.yaml as yaml
 import numpy as np
-from time import time
+from tqdm import tqdm
 from PIL import Image
 
 import torch
@@ -58,6 +58,7 @@ class Visualizer:
         model = XVLM(config=config)
         model.load_pretrained(args.checkpoint, config, is_eval=not args.load_pretrained)
         model = model.to(args.device)
+        model.eval()
 
         print("### Total Params: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
@@ -83,11 +84,12 @@ class Visualizer:
         self.config = config
         self.person_reid = (args.dataset == 'personreid_re')
 
+    @torch.no_grad()
     def index_images(self) -> None:
         image_feats = []
         image_embeds = []
         img_ids = []
-        for image, img_id in self.test_loader:
+        for image, img_id in tqdm(self.test_loader):
             image = image.to(self.args.device)
             image_feat = self.model.vision_encoder(image)
             image_embed = self.model.vision_proj(image_feat[:, 0, :])
@@ -101,7 +103,7 @@ class Visualizer:
         self.image_embeds = torch.cat(image_embeds, dim=0)
         self.img_ids = torch.cat(img_ids, dim=0)
 
-
+    @torch.no_grad()
     def search_texts(self, texts: List[str]) -> List[List[int]]:
         num_text = len(texts)
         text_bs = self.config['batch_size_test_text']  # 256
@@ -109,7 +111,7 @@ class Visualizer:
         text_embeds = []
         text_atts = []
 
-        for i in range(0, num_text, text_bs):
+        for i in tqdm(range(0, num_text, text_bs)):
             text = texts[i: min(num_text, i + text_bs)]
             text_input = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.config['max_tokens'],
                                 return_tensors="pt").to(self.args.device)
@@ -143,6 +145,7 @@ class Visualizer:
             score = self.model.itm_head(output.last_hidden_state[:, 0, :])[:, 1]
             score_matrix_t2i[i, topk_idx] = score
 
+        score_matrix_t2i = score_matrix_t2i.cpu().numpy()
         image_id_list = []
         for text_index, score in enumerate(score_matrix_t2i):
             image_inds_index = np.argsort(score)[::-1]
@@ -161,16 +164,16 @@ class Visualizer:
         return Image.open(image_path).convert('RGB')
     
 
-    def visualize(self, texts: List[str], image_ids: List[List[int]], max_rank: int = 10, gt_image_ids: List[List[int]] = [], gt_ids: List[List[int]] = []) -> None:
+    def visualize(self, texts: List[str], image_ids: List[List[int]], max_rank: int = 10, gt_image_ids: List[List[int]] = [], gt_ids: List[List[int]] = []) -> None: 
         root_path = os.path.join(self.args.output_dir)
-        if not os.isdir():
+        if not os.path.isdir(root_path):
             os.mkdir(root_path)
 
-        if self.args.person_reid and len(gt_ids) > 0:
+        if self.person_reid and len(gt_ids) > 0:
             img2txt = self.test_loader.dataset.img2txt
             txt2id = self.test_loader.dataset.txt2id
 
-        for textid, text, image_id in enumerate(zip(texts, image_ids)):
+        for textid, (text, image_id) in enumerate(zip(texts, image_ids)):
             print("Query: ", text)
             if len(gt_image_ids) > 0:
                 gt_set = set(gt_image_ids[textid])    
@@ -184,7 +187,7 @@ class Visualizer:
                 gallery_img = np.asarray(image, dtype=np.uint8)
 
                 is_gt = len(gt_ids) > 0 and self.args.person_id and (gt_ids[textid] == txt2id[img2txt[image_id[i]]])\
-                     or len(gt_image_ids) > 0 and (not self.args.person_reid) and (image_id[i] in gt_set)
+                     or len(gt_image_ids) > 0 and (not self.person_reid) and (image_id[i] in gt_set)
                
                 if is_gt:
                     ax.add_patch(plt.Rectangle(xy=(0, 0), width=gallery_img.shape[1] - 1,
@@ -196,12 +199,10 @@ class Visualizer:
                                                 fill=False, linewidth=5))
 
                 ax.imshow(gallery_img)
-                ax.set_title(f'{self.dist[0][i]:.3f}')
                 ax.axis("off")
 
             plt.tight_layout()
-            plt.imshow()
-            filepath = os.path.join(root_path, "{text}_{self.args.dataset}_results.jpg")
+            filepath = os.path.join(root_path, f"{text}_{self.args.dataset}_results.jpg")
             fig.savefig(filepath)
 
     
@@ -212,7 +213,7 @@ class Visualizer:
             query = [query]
 
         if type(query) == List[int]:
-            if self.args.person_reid:
+            if self.person_reid:
                 gt_ids = [self.test_loader.dataset.txt2id[id] for id in query]
             else:
                 gt_image_ids = [self.test_loader.dataset.txt2img[id] for id in query]
