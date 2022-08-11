@@ -8,6 +8,7 @@ import ruamel.yaml as yaml
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
+from time import time
 
 import torch
 import torch.nn.functional as F
@@ -93,7 +94,11 @@ class Visualizer:
             image = image.to(self.args.device)
             image_feat = self.model.vision_encoder(image)
             image_embed = self.model.vision_proj(image_feat[:, 0, :])
-            image_embed = F.normalize(image_embed, dim=-1)
+            image_embed = F.normalize(image_embed, dim=-1).cpu()
+
+            image_feat = image_feat.cpu()
+            image = image.cpu()
+
 
             image_feats.append(image_feat)
             image_embeds.append(image_embed)
@@ -122,8 +127,8 @@ class Visualizer:
             text_feats.append(text_feat)
             text_atts.append(text_input.attention_mask)
 
-        text_embeds = torch.cat(text_embeds, dim=0)
-        text_feats = torch.cat(text_feats, dim=0)
+        text_embeds = torch.cat(text_embeds, dim=0).cpu()
+        text_feats = torch.cat(text_feats, dim=0).cpu()
         text_atts = torch.cat(text_atts, dim=0)
 
         sims_matrix = self.image_embeds @ text_embeds.t()
@@ -133,11 +138,11 @@ class Visualizer:
 
         for i, sims in enumerate(sims_matrix):
             topk_sim, topk_idx = sims.topk(k=self.config['k_test'], dim=0)
-            encoder_output = self.image_feats[topk_idx]
+            encoder_output = self.image_feats[topk_idx].to(self.args.device)
             encoder_att = torch.ones(encoder_output.size()[:-1], dtype=torch.long).to(self.args.device)
-            output = self.model.text_encoder(encoder_embeds=text_feats[i].repeat(self.config['k_test'], 1, 1),
+            output = self.model.text_encoder(encoder_embeds=text_feats[i].repeat(self.config['k_test'], 1, 1).to(self.args.device),
                                         attention_mask=text_atts[i].repeat(self.config['k_test'], 1),
-                                        encoder_hidden_states=encoder_output,
+                                        encoder_hidden_states=encoder_output.to(self.args.device),
                                         encoder_attention_mask=encoder_att,
                                         return_dict=True,
                                         mode='fusion'
@@ -250,5 +255,12 @@ class Visualizer:
                 gt_image_ids = [[self.test_loader.dataset.txt2img[id]] for id in query]
             query = [self.test_loader.dataset.text[id] for id in query]
 
+        start_time = time()
         image_id_list = self.search_texts(query)
+
+        query_size = 1
+        if type(query) == list:
+            query_size = len(query)
+
+        print(f"Time to fetch image ids for {query_size} queries : {time() - start_time}")
         self.visualize(texts=query, image_ids=image_id_list, max_rank=10, gt_image_ids=gt_image_ids, gt_ids=gt_ids)
