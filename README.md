@@ -1,6 +1,77 @@
+# Matroid-X-VLM-extended
+
+## Introduction
+This is a modified implementation of "Multi-Grained Vision Language Pre-Training: Aligning Texts with Visual Concepts" to be used for Text-Image search especially on a Text based Person Reid dataset (RSTPReid). The model is evaluated on three datasets, namely - MSCOCO, Flickr30k and RSTPReid. This documentation covers how to evaluate the model on all of these datasets as well as train the model on RSTPReid dataset.
+
+## Environment
+Set up the conda environment
+```bash
+conda env create -f environment.yml
+conda activate xvlm
+```
+
+## Evaluation scripts
+- Flickr-30k
+  - Zero-shot
+    ```bash
+    python3 run.py --task "itr_flickr" --dist "1" --evaluate --load_pretrained --output_dir "output/itr_eval_flickr" --checkpoint "checkpoints/16m_base_model_state_step_199999.th" --config_override 'configs/itr_flickr/config_zeroshot.yaml' > output/itr_eval_flickr/output.txt
+    ```
+
+  - Fine Tuned
+    ```bash
+    python3 run.py --task "itr_flickr" --dist "1" --evaluate --output_dir "output/itr_eval_flickr_finetuned" --checkpoint "checkpoints/itr_flickr/checkpoint_best.pth"
+    ```
+
+- MSCOCO-5k
+  - Zero-shot
+    ```bash
+    python3 run.py --task "itr_coco" --dist "1" --evaluate --output_dir "output/itr_eval_mscoco_zeroshot" --checkpoint "checkpoints/16m_base_model_state_step_199999.th" --config_override checkpoints/itr_coco/config_zeroshot.yaml' --load_pretrained > output/itr_eval_mscoco_zeroshot/output.txt
+    ```
+
+  - Fine Tuned
+    ```bash
+    python3 run.py --task "itr_coco" --dist "1" --evaluate --output_dir "output/itr_eval_mscoco_finetuned" --checkpoint "checkpoints/itr_coco/checkpoint_9.pth" --config_override "checkpoints/itr_coco/config.yaml"
+    ```
+
+- RSTPReid
+  - Fully zeroshot
+    ```bash
+    mkdir output/itr_rstpreid_zeroshot
+    
+    python3 run.py --task "itr_rstpreid" --dist "1" --evaluate --load_pretrained --output_dir "output/itr_rstpreid_zeroshot" --checkpoint "checkpoints/16m_base_model_state_step_199999.th" --config_override 'configs/itr_rstpreid/config_zeroshot.yaml' > output/itr_rstpreid_zeroshot/output.txt
+    ```
+
+  - Fine Tuned on Flickr30k
+    ```bash
+    mkdir output/itr_rstpreid_zeroshot_flickr30k
+    
+    python3 run.py --task "itr_rstpreid" --dist "1" --evaluate --output_dir "output/itr_rstpreid_zeroshot_flickr30k" --checkpoint "checkpoints/itr_flickr/checkpoint_best.pth" --config_override 'configs/itr_rstpreid/config.yaml' > output/itr_rstpreid_zeroshot_flickr30k/output.txt
+    ```
+
+  - Fine Tuned on MSCOCO
+    ```bash
+    mkdir output/itr_rstpreid_zeroshot_mscoco
+    
+    python3 run.py --task "itr_rstpreid" --dist "1" --evaluate --output_dir "output/itr_rstpreid_zeroshot_mscoco" --checkpoint "checkpoints/itr_coco/checkpoint_9.pth" --config_override 'configs/itr_rstpreid/config.yaml' > output/itr_rstpreid_zeroshot_mscoco/output.txt
+    ```
+
+## Finetuning on RSTPReid
+- Fine Tuned on RSTPReid (from zeroshot)
+  ```bash
+  mkdir output/itr_rstpreid_finetune_from_zeroshot
+  
+  python3 run.py --task "itr_rstpreid" --dist "f4" --output_dir "output/itr_rstpreid_finetune_from_zeroshot" --load_pretrained --checkpoint "checkpoints/16m_base_model_state_step_199999.th" --config_override 'configs/itr_rstpreid/config_zeroshot.yaml' --master_port_override 12347 > output/itr_rstpreid_finetune_from_zeroshot/output.txt
+  ```
+
+- Fine Tuned on RSTPReid (from COCO)
+  ```bash
+  mkdir output/itr_rstpreid_finetune_from_coco
+
+  python3 run.py --task "itr_rstpreid" --dist "f4" --output_dir "output/itr_rstpreid_finetune_from_coco" --checkpoint "checkpoints/itr_coco/checkpoint_9.pth" --config_override 'configs/itr_rstpreid/config.yaml' --master_port_override 12346 > output/itr_rstpreid_finetune_from_coco/output3.txt
+  ```
+
+
 # X-VLM: learning multi-grained vision language alignments
-
-
 **[Multi-Grained Vision Language Pre-Training: Aligning Texts with Visual Concepts](https://arxiv.org/abs/2111.08276). Yan Zeng, Xinsong Zhang, Hang Li. arXiv 2021.**
 
 - May 2022: The paper has been accepted by ICML 2022 
